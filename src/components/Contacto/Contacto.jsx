@@ -4,20 +4,39 @@ function Contacto() {
   // Estado para capturar los datos y mostrar mensaje de éxito
   const [datos, setDatos] = useState({ nombre: '', correo: '', asunto: '', mensaje: '' });
   const [enviado, setEnviado] = useState(false);
+  const [enviando, setEnviando] = useState(false);
 
   // Función para actualizar los datos mientras el usuario escribe
   const manejarCambio = (e) => {
     setDatos({ ...datos, [e.target.name]: e.target.value });
   };
 
-  // Función al presionar enviar
-  const manejarEnvio = (e) => {
+  // Función al presionar enviar - envía a la función serverless de Netlify
+  const manejarEnvio = async (e) => {
     e.preventDefault();
-    setEnviado(true);
-    // Limpiar el formulario
-    setDatos({ nombre: '', correo: '', asunto: '', mensaje: '' });
-    // Ocultar la alerta de éxito después de 4 segundos
-    setTimeout(() => setEnviado(false), 4000);
+    setEnviando(true);
+    try {
+      const res = await fetch('/.netlify/functions/sendEmail', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(datos),
+      });
+
+      if (res.ok) {
+        setEnviado(true);
+        setDatos({ nombre: '', correo: '', asunto: '', mensaje: '' });
+        setTimeout(() => setEnviado(false), 4000);
+      } else {
+        const text = await res.text();
+        console.error('Error sending email:', text);
+        alert('Ocurrió un error al enviar el mensaje. Intenta de nuevo más tarde.');
+      }
+    } catch (err) {
+      console.error(err);
+      alert('No se pudo conectar con el servidor de correo.');
+    } finally {
+      setEnviando(false);
+    }
   };
 
   return (
@@ -136,9 +155,10 @@ function Contacto() {
 
             <button 
               type="submit" 
-              className="w-full bg-orange-600 text-white p-3 rounded-lg font-bold hover:bg-orange-700 transition-colors shadow-lg shadow-orange-600/30"
+              disabled={enviando}
+              className={`w-full p-3 rounded-lg font-bold transition-colors shadow-lg ${enviando ? 'bg-orange-400 text-white' : 'bg-orange-600 text-white hover:bg-orange-700 shadow-orange-600/30'}`}
             >
-              Enviar Mensaje
+              {enviando ? 'Enviando...' : 'Enviar Mensaje'}
             </button>
           </form>
         </div>
